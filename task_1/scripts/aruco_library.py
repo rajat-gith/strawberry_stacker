@@ -9,47 +9,87 @@ import math
 import time
 
 def detect_ArUco(img):
-	## function to detect ArUco markers in the image using ArUco library
-	## argument: img is the test image
-	## return: dictionary named Detected_ArUco_markers of the format {ArUco_id_no : corners}, where ArUco_id_no indicates ArUco id and corners indicates the four corner position of the aruco(numpy array)
-	## 		   for instance, if there is an ArUco(0) in some orientation then, ArUco_list can be like
-	## 				{0: array([[315, 163],
-	#							[319, 263],
-	#							[219, 267],
-	#							[215,167]], dtype=float32)}
-
+    global ids1, ids2
     Detected_ArUco_markers = {}
-    ## enter your code here ##
-
-
+    aruco_dict = aruco.Dictionary_get(aruco.DICT_5X5_250)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    arucoParameters = aruco.DetectorParameters_create()
+    corners, ids, rejectedImgPoints = aruco.detectMarkers(
+        gray, aruco_dict, parameters=arucoParameters)
+    if np.all(ids != None):
+        display = aruco.drawDetectedMarkers(img, corners)
+        for corner,id in zip(corners,ids):
+            id1=int(id)
+            Detected_ArUco_markers[id1]=corner[0]
+    print(Detected_ArUco_markers)
     return Detected_ArUco_markers
 
-
 def Calculate_orientation_in_degree(Detected_ArUco_markers):
-	## function to calculate orientation of ArUco with respective to the scale mentioned in problem statement
-	## argument: Detected_ArUco_markers  is the dictionary returned by the function detect_ArUco(img)
-	## return : Dictionary named ArUco_marker_angles in which keys are ArUco ids and the values are angles (angles have to be calculated as mentioned in the problem statement)
-	##			for instance, if there are two ArUco markers with id 1 and 2 with angles 120 and 164 respectively, the 
-	##			function should return: {1: 120 , 2: 164}
+    ArUco_marker_angles = {}
+    for key,value in Detected_ArUco_markers.items():
+        x1=value[0][0]
+        x2=value[1][0]
+        x3=value[2][0]
+        x4=value[3][0]
+        y1=value[0][1]
+        y2=value[1][1]
+        y3=value[2][1]
+        y4=value[3][1]
 
-	ArUco_marker_angles = {}
-	## enter your code here ##
+        tx=int((x1+x2)/2)
+        ty=int((y1+y2)/2)
 
+        cx = int(((x1 + x3) / 2))
+        cy = int(((y1 + y3) / 2))
 
-	return ArUco_marker_angles	## returning the angles of the ArUco markers in degrees as a dictionary
+        l=math.sqrt((math.pow((tx-cx),2))+(math.pow((ty-cy),2)))
 
+        tx=tx-cx
+        ty=ty-cy
+
+        ax=l
+        ay=0
+
+        a=np.array([0,0])
+        b=np.array([ax,ay])
+        c=np.array([tx,ty])
+
+        ba=b-a
+        ca=c-a
+
+        cosine_angle = np.dot(ba,ca) / ( np.linalg.norm(ba) * np.linalg.norm(ca))
+        if(ty>0):
+            
+            angle = (360-math.floor(np.degrees(np.arccos(cosine_angle))))
+            ArUco_marker_angles[key]=angle
+        else:
+            
+            angle = math.floor(np.degrees(np.arccos(cosine_angle)))
+            ArUco_marker_angles[key]=angle
+    print(ArUco_marker_angles)
+    return ArUco_marker_angles
 
 def mark_ArUco(img,Detected_ArUco_markers,ArUco_marker_angles):
-	## function to mark ArUco in the test image as per the instructions given in problem statement
-	## arguments: img is the test image 
-	##			  Detected_ArUco_markers is the dictionary returned by function detect_ArUco(img)
-	##			  ArUco_marker_angles is the return value of Calculate_orientation_in_degree(Detected_ArUco_markers)
-	## return: image namely img after marking the aruco as per the instruction given in problem statement
-
-    ## enter your code here ##
-
-
-
-  	return img
-
-
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    for (key,value),(id,angle) in zip(Detected_ArUco_markers.items(),ArUco_marker_angles.items()):
+        x1=value[0][0]
+        x2=value[1][0]
+        x3=value[2][0]
+        x4=value[3][0]
+        y1=value[0][1]
+        y2=value[1][1]
+        y3=value[2][1]
+        y4=value[3][1]
+        tx=int((x1+x2)/2)
+        ty=int((y1+y2)/2)
+        cx = int(((x1 + x3) / 2))
+        cy = int(((y1 + y3) / 2))
+        img=cv2.circle(img,(x1,y1),4,(125,125,125),-1)
+        img=cv2.circle(img,(x2,y2),4,(0,255,0),-1)
+        img=cv2.circle(img,(x3,y3),4,(180,105,255),-1)
+        img=cv2.circle(img,(x4,y4),4,(255,255,255),-1)
+        img=cv2.circle(img,(cx,cy),6,(0,0,255),-1)
+        img=cv2.line(img,(cx,cy),(tx,ty),(255,0,0),5)
+        img=cv2.putText(img,str(key), (int(cx+20),int(cy+20)), font,1, (0,0,255), 2, cv2.LINE_AA)
+        img=cv2.putText(img,str(angle), (int(x4-50),int(y4-30)), font,1, (0,255,0), 2, cv2.LINE_AA)
+    return img
